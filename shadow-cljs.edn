@@ -1,0 +1,8 @@
+{:deps     {:aliases [:shadow-cljs]}
+ :dev-http {8080 "public"}
+
+ :builds
+ {:app
+  {:target :browser
+   :modules {:main {:init-fn gyk.n-back.core/init}}
+   }}}

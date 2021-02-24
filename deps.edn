@@ -1,0 +1,27 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure       {:mvn/version "1.10.1"}
+        org.clojure/clojurescript {:mvn/version "1.10.773"}
+        org.clojure/core.async    {:mvn/version "1.3.610"}
+
+        uix.core/uix.core {:git/url "https://github.com/roman01la/uix.git"
+                           :deps/root "core"
+                           :sha "a4a7e0191f3c84a48b7de14d8f98bcfa4a9c82c3"}
+        uix.dom/uix.dom {:git/url "https://github.com/roman01la/uix.git"
+                         :deps/root "dom"
+                         :sha "a4a7e0191f3c84a48b7de14d8f98bcfa4a9c82c3"}
+
+        amalloy/ring-buffer {:mvn/version "1.3.1"}}
+ :aliases
+ {:shadow-cljs
+  {:extra-deps {thheller/shadow-cljs {:mvn/version "2.11.18"}}
+   ; Running with clj tools directly: `clojure -M:shadow-cljs watch app`
+   :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+
+  :test {:extra-paths ["test"]
+         :extra-deps {org.clojure/test.check {:mvn/version "1.1.0"}}}
+  :runner
+  {:extra-deps {com.cognitect/test-runner
+                {:git/url "https://github.com/cognitect-labs/test-runner"
+                 :sha "b6b3193fcc42659d7e46ecd1884a228993441182"}}
+   :main-opts ["-m" "cognitect.test-runner"
+               "-d" "test"]}}}
