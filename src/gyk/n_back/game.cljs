@@ -48,7 +48,7 @@
   [n ; The N in N-back
    i ; The round number
    match-prob ; The probability of a match occurring
-   queue ; The ring buffer of size n to store the recent items   
+   queue ; The ring buffer of size n to store the recent items
    current-round
    last-result
    history])
@@ -92,7 +92,8 @@
                           (filter #(not= % head))
                           (first)))
           new-round (Round. new-item ts should-match? nil)]
-      (println new-round)
+      (when-not (zero? ts)
+        (println new-round))
       (assoc this
              :i (inc (:i this))
              :queue queue'

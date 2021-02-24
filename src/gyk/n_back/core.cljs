@@ -4,30 +4,33 @@
             ["react-transition-group" :refer [SwitchTransition CSSTransition]]
             ["react-bootstrap/Button" :as Button]
             ["react-bootstrap/Alert" :as Alert]
+            ["react-bootstrap/Tabs" :as Tabs]
+            ["react-bootstrap/Tab" :as Tab]
             [gyk.n-back.game :as game]
+            [gyk.n-back.settings :refer [settings-comp]]
             [gyk.n-back.util :as util]))
 
 (defn init []
   (set! (.-title js/document) "N-Back"))
 
-;; Config
+;; Default settings
 (def n 2)
+(def interval-ms 2500)
 (def match-probability 0.333)
 
 (defn card [card-value i]
-  [:<>
-   [:div
-    [:> SwitchTransition {:mode "out-in"}
-     [:> CSSTransition {:key i
-                        :class-names "fade"
+  [:div
+   [:> SwitchTransition {:mode "out-in"}
+    [:> CSSTransition {:key i
+                       :class-names "fade"
 
-                        :add-end-listener
-                        (fn [node done]
-                          (.addEventListener node "transitionend" done false))}
-      [:div.button-container
-       [:> Button {:class-name "n-back-card"
-                   :variant "primary"}
-        card-value]]]]]])
+                       :add-end-listener
+                       (fn [node done]
+                         (.addEventListener node "transitionend" done false))}
+     [:div.button-container
+      [:> Button {:class-name "n-back-card"
+                  :variant "primary"}
+       card-value]]]]])
 
 (defn instant-result [started? result]
   [:div
@@ -48,73 +51,94 @@
      " Stop "
      " Start ")])
 
-(def game (game/emoticon-game n match-probability nil))
-(defn- game-now [] (game/step game (util/get-current-ts)))
+(defn- game-n [n] (game/emoticon-game n match-probability nil))
+(defn- game-n-now [n] (game/step (game-n n) (util/get-current-ts)))
 
 (def ^:private interval-id* (atom nil))
 
-(defn app []
-  (let [game*        (uix.core/state game)
+(defn game-panel [n interval]
+  (let [game*        (uix.core/state (game-n n))
         last-result* (uix.core/cursor-in game* [:last-result])
         started?*    (uix.core/state false)
         show-stat?*  (uix.core/state false)]
+    [:div.game-panel
+     ; The sliding card
+     [card (game/current-item @game*) (game/round-number @game*)]
+
+     ; Gives the player some instant feedback
+     [instant-result @started?* @last-result*]
+
+     ; Start/Stop
+     [start-stop-button
+      @started?*
+      (fn [started?]
+        (let [started?' (not started?)]
+          (if started?'
+            (do
+              (reset! game* (game-n-now n))
+              (reset!
+               interval-id*
+               (js/setInterval
+                (fn []
+                  (swap! game* game/step (util/get-current-ts)))
+                interval))
+              (reset! show-stat?* false))
+            (do
+              (js/clearInterval (-> (reset-vals! interval-id* nil)
+                                    (first)))
+              (reset! show-stat?* true)))
+          (reset! started?* started?')))]
+
+     ; Player signals the match
+     [:> Button {:on-click (fn []
+                             (swap! game* game/signal (util/get-current-ts)))
+                 :class-name "cmd-btn"
+                 :variant "success"
+                 :disabled (not (and (game/can-match? @game*)
+                                     @started?*))}
+      " Match "]
+
+     (when @show-stat?*
+       [:div
+        [:hr] ; ----------------
+
+        [:> Alert {:show @show-stat?*
+                   :variant "info"}
+         [:> Alert/Heading
+          "Game Result"]
+         [:ul {:style {:text-align "left"}}
+          [:li "Correct = "
+           (util/percentage (game/correct-rate @game*))]
+          [:li "Reaction time = "
+           (util/int-or-na (game/reaction-time @game*)) " ms (All) / "
+           (util/int-or-na (game/correct-reaction-time @game*)) " ms (Correct)\n"]
+          [:li "Combined time = "
+           (util/int-or-na (game/combined-time @game*)) " ms\n"]]
+         [:hr]
+         [:> Button {:on-click #(reset! show-stat?* false)
+                     :variant "info"}
+          "Close"]]])]))
+
+(defn app []
+  (let [n* (uix.core/state n)
+        interval* (uix.core/state interval-ms)]
     [:<>
      [:div.main
-      [:div.main-inner
-       ; The sliding card
-       [card (game/current-item @game*) (game/round-number @game*)]
-
-       ; Gives the player some instant feedback
-       [instant-result @started?* @last-result*]
-
-       ; Start/Stop
-       [start-stop-button
-        @started?*
-        (fn [started?]
-          (let [started?' (not started?)]
-            (if started?'
-              (do
-                (reset! game* (game-now))
-                (reset!
-                 interval-id*
-                 (js/setInterval
-                  (fn []
-                    (swap! game* game/step (util/get-current-ts)))
-                  2500))
-                (reset! show-stat?* false))
-              (do
-                (js/clearInterval (-> (reset-vals! interval-id* nil)
-                                      (first)))
-                (reset! show-stat?* true)))
-            (reset! started?* started?')))]
-
-       ; Player signals the match
-       [:> Button {:on-click (fn []
-                               (swap! game* game/signal (util/get-current-ts)))
-                   :class-name "cmd-btn"
-                   :variant "success"
-                   :disabled (not (and (game/can-match? @game*)
-                                       @started?*))}
-        " Match "]
-
-       [:hr] ; ----------------
-
-       (when @show-stat?*
-         [:> Alert {:show @show-stat?*
-                    :variant "info"}
-          [:> Alert/Heading
-           "Game Result"]
-          [:ul {:style {:text-align "left"}}
-           [:li "Correct = "
-            (util/percentage (game/correct-rate @game*))]
-           [:li "Reaction time = "
-            (util/int-or-na (game/reaction-time @game*)) " ms (All) / "
-            (util/int-or-na (game/correct-reaction-time @game*)) " ms (Correct)\n"]
-           [:li "Combined time = "
-            (util/int-or-na (game/combined-time @game*)) " ms\n"]]
-          [:hr]
-          [:> Button {:on-click #(reset! show-stat?* false)
-                      :variant "info"}
-           "Close"]])]]]))
+      [:> Tabs {:default-active-key "play"
+                :style {:margin "0.5rem 0.5rem 1rem 0.5rem"}}
+       [:> Tab {:title "Play"
+                :event-key "play"}
+        [game-panel @n* @interval*]]
+       [:> Tab {:title "Settings"
+                :event-key "settings"}
+        [:div
+         [settings-comp {:n n
+                         :on-change-n #(reset! n* %)
+                         :interval interval-ms
+                         :on-change-interval #(reset! interval* %)}]]]
+       [:> Tab {:title "Help"
+                :event-key "help"}
+        [:p
+         "TODO"]]]]]))
 
 (uix.dom/render [app] (.getElementById js/document "root"))
