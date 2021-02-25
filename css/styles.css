@@ -1,0 +1,94 @@
+html {
+  box-sizing: border-box;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  padding: 1rem;
+  font-family: 'American Typewriter', sans-serif;
+  background-color: #F7F7F7;
+}
+
+.main {
+  width: 50%;
+  margin: auto;
+  padding: 0.3rem;
+  background-color: white;
+  border: 0.2rem solid #ECECEC;
+  border-radius: 0.3rem;
+}
+
+.tab-content {
+  margin: 0.2rem;
+  padding: 0.5rem 0.8rem 0.3rem 0.8rem;
+}
+
+.game-panel {
+  border: transparent gray;
+  border-radius: 0.25rem;
+  text-align: center;
+}
+
+.label {
+  margin-bottom: 0.5rem;
+}
+
+.alert {
+  /* override Bootstrap's setting */
+  margin-bottom: 0.5rem;
+}
+
+a.nav-link {
+  color: gray;
+}
+
+.instant-result {
+  padding: 0.3rem 0.5rem 0rem 0.5rem;
+  font-size: 2rem;
+  margin-top: 1rem;
+}
+
+.button-container {
+  margin: 0.5rem;
+}
+
+.n-back-card {
+  font-size: 5rem;
+  padding: 0.5rem 1rem;
+}
+
+.cmd-btn {
+  font-size: 1.3rem;
+  margin: 0.5rem;
+  text-transform: uppercase;
+}
+
+.fade-enter .btn {
+  opacity: 0.2;
+  transform: translateX(150%);
+}
+.fade-enter-active .btn {
+  opacity: 1;
+  transform: translateX(0%);
+}
+.fade-exit .btn {
+  opacity: 1;
+  transform: translateX(0%);
+}
+.fade-exit-active .btn {
+  opacity: 0;
+  transform: translateX(-150%);
+}
+.fade-enter-active .btn {
+  transition: opacity 300ms, transform 300ms;
+}
+.fade-exit-active .btn {
+  transition: opacity 400ms, transform 400ms;
+}
