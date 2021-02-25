@@ -57,7 +57,7 @@
 (def ^:private interval-id* (atom nil))
 
 (defn game-panel [n interval]
-  (let [game*        (uix.core/state (game-n n))
+  (let [game*        (uix.core/state #(game-n n))
         last-result* (uix.core/cursor-in game* [:last-result])
         started?*    (uix.core/state false)
         show-stat?*  (uix.core/state false)]

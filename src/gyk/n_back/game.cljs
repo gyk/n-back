@@ -92,7 +92,7 @@
                           (filter #(not= % head))
                           (first)))
           new-round (Round. new-item ts should-match? nil)]
-      (when-not (zero? ts)
+      (when goog.DEBUG
         (println new-round))
       (assoc this
              :i (inc (:i this))
