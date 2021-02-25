@@ -56,7 +56,7 @@
 
 (def ^:private interval-id* (atom nil))
 
-(defn game-panel [n interval]
+(defn game-panel [n interval on-change]
   (let [game*        (uix.core/state #(game-n n))
         last-result* (uix.core/cursor-in game* [:last-result])
         started?*    (uix.core/state false)
@@ -87,7 +87,9 @@
               (js/clearInterval (-> (reset-vals! interval-id* nil)
                                     (first)))
               (reset! show-stat?* true)))
-          (reset! started?* started?')))]
+          (reset! started?* started?')
+          (when on-change
+            (on-change started?'))))]
 
      ; Player signals the match
      [:> Button {:on-click (fn []
@@ -121,23 +123,29 @@
 
 (defn app []
   (let [n* (uix.core/state n)
-        interval* (uix.core/state interval-ms)]
+        interval* (uix.core/state interval-ms)
+
+        ; WORKAROUND: Disables "Settings" and "Help" tabs when the game is running, as
+        ; react-transition-group causes wrong sliding card opacity when switching tabs.
+        is-running?* (uix.core/state false)]
     [:<>
      [:div.main
       [:> Tabs {:default-active-key "play"
                 :style {:margin "0.5rem 0.5rem 1rem 0.5rem"}}
        [:> Tab {:title "Play"
                 :event-key "play"}
-        [game-panel @n* @interval*]]
+        [game-panel @n* @interval* #(reset! is-running?* %)]]
        [:> Tab {:title "Settings"
-                :event-key "settings"}
+                :event-key "settings"
+                :disabled @is-running?*}
         [:div
          [settings-comp {:n n
                          :on-change-n #(reset! n* %)
                          :interval interval-ms
                          :on-change-interval #(reset! interval* %)}]]]
        [:> Tab {:title "Help"
-                :event-key "help"}
+                :event-key "help"
+                :disabled @is-running?*}
         [:p
          "TODO"]]]]]))
 
