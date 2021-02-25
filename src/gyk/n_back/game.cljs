@@ -122,7 +122,7 @@
 
 ; ts is needed in the case of 1-back.
 (defn emoticon-game [n match-prob ts]
-  {:pre [(pos? n)
+  {:pre [(pos-int? n) ; WTH `(pos? "2")` is true in CLJS
          (< 0.0 match-prob 1.0)
          (>= ts 0)]}
   (let [ts (or ts 0)
