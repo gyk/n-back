@@ -60,7 +60,51 @@
   (let [game*        (uix.core/state #(game-n n))
         last-result* (uix.core/cursor-in game* [:last-result])
         started?*    (uix.core/state false)
-        show-stat?*  (uix.core/state false)]
+        show-stat?*  (uix.core/state false)
+
+        can-signal? #(and (game/can-match? @game*)
+                          @started?*)
+
+        ; Event handlers
+        handle-start-stop
+        (fn [started?]
+          (let [started?' (not started?)]
+            (if started?'
+              (do
+                (reset! game* (game-n-now n))
+                (reset!
+                 interval-id*
+                 (js/setInterval
+                  (fn []
+                    (swap! game* game/step (util/get-current-ts)))
+                  interval))
+                (reset! show-stat?* false))
+              (do
+                (js/clearInterval (-> (reset-vals! interval-id* nil)
+                                      (first)))
+                (reset! show-stat?* true)))
+            (reset! started?* started?')
+            (when on-change
+              (on-change started?'))))
+
+        handle-player-signal
+        (fn []
+          (println "Inner can-signal?" (can-signal?))
+          (when (can-signal?)
+            (swap! game* game/signal (util/get-current-ts))))
+
+        handle-key-down
+        (fn [event]
+          (case (.-key event)
+            " " (handle-start-stop @started?*)
+            "Enter" (handle-player-signal)
+            ()))]
+    ; Listens to keydown
+    (uix.core/with-effect []
+      (js/document.addEventListener "keydown" handle-key-down)
+      #(js/document.removeEventListener "keydown" handle-key-down))
+
+    ; UI
     [:div.game-panel
      ; The sliding card
      [card (game/current-item @game*) (game/round-number @game*)]
@@ -69,35 +113,14 @@
      [instant-result @started?* @last-result*]
 
      ; Start/Stop
-     [start-stop-button
-      @started?*
-      (fn [started?]
-        (let [started?' (not started?)]
-          (if started?'
-            (do
-              (reset! game* (game-n-now n))
-              (reset!
-               interval-id*
-               (js/setInterval
-                (fn []
-                  (swap! game* game/step (util/get-current-ts)))
-                interval))
-              (reset! show-stat?* false))
-            (do
-              (js/clearInterval (-> (reset-vals! interval-id* nil)
-                                    (first)))
-              (reset! show-stat?* true)))
-          (reset! started?* started?')
-          (when on-change
-            (on-change started?'))))]
+     [start-stop-button @started?* (fn [started?]
+                                     (handle-start-stop started?))]
 
      ; Player signals the match
-     [:> Button {:on-click (fn []
-                             (swap! game* game/signal (util/get-current-ts)))
+     [:> Button {:on-click handle-player-signal
                  :class-name "cmd-btn"
                  :variant "success"
-                 :disabled (not (and (game/can-match? @game*)
-                                     @started?*))}
+                 :disabled (not (can-signal?))}
       " Match "]
 
      (when @show-stat?*
