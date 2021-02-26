@@ -8,6 +8,7 @@
             ["react-bootstrap/Tab" :as Tab]
             [gyk.n-back.game :as game]
             [gyk.n-back.settings :refer [settings-comp]]
+            [gyk.n-back.help :refer [help-comp]]
             [gyk.n-back.util :as util]))
 
 (defn init []
@@ -169,7 +170,6 @@
        [:> Tab {:title "Help"
                 :event-key "help"
                 :disabled @is-running?*}
-        [:p
-         "TODO"]]]]]))
+        [help-comp]]]]]))
 
 (uix.dom/render [app] (.getElementById js/document "root"))
