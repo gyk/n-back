@@ -6,6 +6,7 @@
             ["react-bootstrap/Alert" :as Alert]
             ["react-bootstrap/Tabs" :as Tabs]
             ["react-bootstrap/Tab" :as Tab]
+            ["react-bootstrap/Badge" :as Badge]
             [gyk.n-back.game :as game]
             [gyk.n-back.settings :refer [settings-comp]]
             [gyk.n-back.help :refer [help-comp]]
@@ -106,9 +107,23 @@
       #(js/document.removeEventListener "keydown" handle-key-down))
 
     ; UI
-    [:div.game-panel
+    [:div.game-panel {:style {:position "relative"}}
+     [:> Badge {:variant "secondary"
+                :style {:position "absolute"
+                        :display "inline-block"
+                        :top "-1rem"
+                        :left "0.5rem"}}
+      (str n "-back")]
+     [:> Badge {:variant "light"
+                :pill true
+                :style {:position "absolute"
+                        :display "inline-block"
+                        :top "-1rem"
+                        :right "0.5rem"}}
+      (str "Trial #" (game/round-number @game*))]
      ; The sliding card
      [card (game/current-item @game*) (game/round-number @game*)]
+
 
      ; Gives the player some instant feedback
      [instant-result @started?* @last-result*]
