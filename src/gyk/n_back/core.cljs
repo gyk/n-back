@@ -54,7 +54,7 @@
      " Start ")])
 
 (defn- game-n [n] (game/emoticon-game n match-probability nil))
-(defn- game-n-now [n] (game/step (game-n n) (util/get-current-ts)))
+(defn- game-n-now [n] (game/emoticon-game n match-probability (util/get-current-ts)))
 
 (def ^:private interval-id* (atom nil))
 
@@ -91,7 +91,6 @@
 
         handle-player-signal
         (fn []
-          (println "Inner can-signal?" (can-signal?))
           (when (can-signal?)
             (swap! game* game/signal (util/get-current-ts))))
 
