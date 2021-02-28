@@ -7,6 +7,8 @@
   (step [this ts])
   (signal [this ts])
   (round-number [this])
+  (with-timestamp [this ts])
+  (last-timestamp [this])
   (last-result [this]))
 
 (defn can-match? [game]
@@ -117,16 +119,20 @@
   (round-number [this]
     (:i this))
 
+  (with-timestamp [this ts]
+    (update this :current-round #(assoc % :spawn-ts ts)))
+
+  (last-timestamp [this]
+    (get-in this [:current-round :spawn-ts]))
+
   (last-result [this]
     (:last-result this)))
 
-; ts is needed in the case of 1-back.
 (defn emoticon-game [n match-prob ts]
   {:pre [(pos-int? n) ; WTH `(pos? "2")` is true in CLJS
          (< 0.0 match-prob 1.0)
-         (>= ts 0)]}
-  (let [ts (or ts 0)
-        q (ring-buffer n)
+         (or (nil? ts) (>= ts 0))]}
+  (let [q (ring-buffer n)
         game (map->EmoticonGame
               {:n n
                :i 0

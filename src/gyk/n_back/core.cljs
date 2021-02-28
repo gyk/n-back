@@ -73,7 +73,11 @@
           (let [started?' (not started?)]
             (if started?'
               (do
-                (reset! game* (game-n-now n))
+                (reset! game* (if (nil? (game/last-timestamp @game*))
+                                ; First time
+                                (game/with-timestamp @game* (util/get-current-ts))
+                                ; Restart
+                                (game-n-now n)))
                 (reset!
                  interval-id*
                  (js/setInterval
