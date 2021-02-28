@@ -10,6 +10,7 @@
             [gyk.n-back.game :as game]
             [gyk.n-back.settings :refer [settings-comp]]
             [gyk.n-back.help :refer [help-comp]]
+            [gyk.n-back.sticky-state :refer [sticky-state]]
             [gyk.n-back.util :as util]))
 
 (defn init []
@@ -164,8 +165,8 @@
           "Close"]]])]))
 
 (defn app []
-  (let [n* (uix.core/state n)
-        interval* (uix.core/state interval-ms)
+  (let [n*        (sticky-state "n-back/settings/n"        n           js/parseInt)
+        interval* (sticky-state "n-back/settings/interval" interval-ms js/parseInt)
 
         ; WORKAROUND: Disables "Settings" and "Help" tabs when the game is running, as
         ; react-transition-group causes wrong sliding card opacity when switching tabs.
@@ -181,9 +182,9 @@
                 :event-key "settings"
                 :disabled @is-running?*}
         [:div
-         [settings-comp {:n n
+         [settings-comp {:n @n*
                          :on-change-n #(reset! n* %)
-                         :interval interval-ms
+                         :interval @interval*
                          :on-change-interval #(reset! interval* %)}]]]
        [:> Tab {:title "Help"
                 :event-key "help"
