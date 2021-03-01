@@ -143,6 +143,15 @@
                  :disabled (not (can-signal?))}
       " Match "]
 
+     (let [show-enough-trials? (and (not @show-stat?*)
+                                    (<= 10 (count (:history @game*)) 11))]
+       (when show-enough-trials?
+         [:div
+          [:hr] ; ----------------
+
+          [:> Alert {:variant "success"}
+           "Results now available (feel free to keep playing)"]]))
+
      (when @show-stat?*
        [:div
         [:hr] ; ----------------
@@ -150,7 +159,7 @@
         [:> Alert {:show @show-stat?*
                    :variant "info"}
          [:> Alert/Heading
-          "Game Result"]
+          "Results"]
          [:ul {:style {:text-align "left"}}
           [:li "Correct = "
            (util/percentage (game/correct-rate @game*))]
