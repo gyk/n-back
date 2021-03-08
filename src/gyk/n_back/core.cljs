@@ -143,8 +143,15 @@
                  :disabled (not (can-signal?))}
       " Match "]
 
-     (let [show-enough-trials? (and (not @show-stat?*)
+     (let [show-stat? @show-stat?*
+           show-enough-trials? (and (not show-stat?)
                                     (<= 10 (count (:history @game*)) 11))]
+       (uix.core/with-effect [show-enough-trials? show-stat?]
+         (if (or show-enough-trials? show-stat?)
+           (util/scroll-to-bottom)
+           (util/scroll-to-top))
+         nil)
+
        (when show-enough-trials?
          [:div
           [:hr] ; ----------------

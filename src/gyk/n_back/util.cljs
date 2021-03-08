@@ -16,3 +16,11 @@
   (if t
     (str (int t))
     na))
+
+(defn scroll-to-top []
+  (set! js/document.body.scrollTop 0))
+
+(defn scroll-to-bottom []
+  (js/window.scrollTo
+   js/document.body.scrollLeft
+   js/document.body.scrollHeight))
