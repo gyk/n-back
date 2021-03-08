@@ -50,9 +50,9 @@ a.nav-link {
 }
 
 .instant-result {
-  padding: 0.3rem 0.5rem 0rem 0.5rem;
+  padding: 0.2rem 0.5rem 0rem 0.5rem;
   font-size: 2rem;
-  margin-top: 1rem;
+  margin-top: 0.8rem;
 }
 
 .button-container {
@@ -70,6 +70,31 @@ a.nav-link {
   margin: 0.5rem;
   text-transform: uppercase;
 }
+
+/* Mobile */
+
+@media (orientation: portrait) and (max-device-width: 1200px) {
+  html {
+    font-size: 5vmin;
+  }
+
+  body {
+    padding: 0.5rem;
+  }
+
+  .main {
+    width: 100%;
+  }
+
+  .cmd-btn {
+    display: block;
+    font-size: 1.4rem;
+    width: 70%;
+    margin: 0rem auto 1rem auto;
+  }
+}
+
+/* Animation */
 
 .fade-enter .btn {
   opacity: 0.2;
