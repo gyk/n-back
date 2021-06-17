@@ -24,15 +24,15 @@
 (defn card [card-value i]
   [:div
    [:> SwitchTransition {:mode "out-in"}
-    [:> CSSTransition {:key i
+    [:> CSSTransition {:key         i
                        :class-names "fade"
 
                        :add-end-listener
-                       (fn [node done]
-                         (.addEventListener node "transitionend" done false))}
+                                    (fn [node done]
+                                      (.addEventListener node "transitionend" done false))}
      [:div.button-container
       [:> Button {:class-name "n-back-card"
-                  :variant "primary"}
+                  :variant    "primary"}
        card-value]]]]])
 
 (defn instant-result [started? result]
@@ -40,16 +40,16 @@
    [:label {:class-name "instant-result"}
     (cond
       (not started?) "😼"
-      (nil? result)  "😺"
+      (nil? result) "😺"
       (first result) "😻"
-      :else          "🙀")]])
+      :else "🙀")]])
 
 (defn start-stop-button [started? on-change]
-  [:> Button {:on-click (fn []
-                          (when on-change
-                            (on-change started?)))
+  [:> Button {:on-click   (fn []
+                            (when on-change
+                              (on-change started?)))
               :class-name "cmd-btn"
-              :variant "warning"}
+              :variant    "warning"}
    (if started?
      " Stop "
      " Start ")])
@@ -65,124 +65,120 @@
         started?*    (uix.core/state false)
         show-stat?*  (uix.core/state false)
 
-        can-signal? #(and (game/can-match? @game*)
-                          @started?*)
+        can-signal?  #(and (game/can-match? @game*)
+                           @started?*)]
+    ; Event handlers
+    (letfn [(handle-start-stop [started?]
+              (let [started?' (not started?)]
+                (if started?'
+                  (do
+                    (reset! game* (if (nil? (game/last-timestamp @game*))
+                                    ; First time
+                                    (game/with-timestamp @game* (util/get-current-ts))
+                                    ; Restart
+                                    (game-n-now n)))
+                    (reset!
+                      interval-id*
+                      (js/setInterval
+                        (fn []
+                          (swap! game* game/step (util/get-current-ts)))
+                        interval))
+                    (reset! show-stat?* false))
+                  (do
+                    (js/clearInterval (-> (reset-vals! interval-id* nil)
+                                          (first)))
+                    (reset! show-stat?* true)))
+                (reset! started?* started?')
+                (when on-change
+                  (on-change started?'))))
 
-        ; Event handlers
-        handle-start-stop
-        (fn [started?]
-          (let [started?' (not started?)]
-            (if started?'
-              (do
-                (reset! game* (if (nil? (game/last-timestamp @game*))
-                                ; First time
-                                (game/with-timestamp @game* (util/get-current-ts))
-                                ; Restart
-                                (game-n-now n)))
-                (reset!
-                 interval-id*
-                 (js/setInterval
-                  (fn []
-                    (swap! game* game/step (util/get-current-ts)))
-                  interval))
-                (reset! show-stat?* false))
-              (do
-                (js/clearInterval (-> (reset-vals! interval-id* nil)
-                                      (first)))
-                (reset! show-stat?* true)))
-            (reset! started?* started?')
-            (when on-change
-              (on-change started?'))))
+            (handle-player-signal []
+              (when (can-signal?)
+                (swap! game* game/signal (util/get-current-ts))))
 
-        handle-player-signal
-        (fn []
-          (when (can-signal?)
-            (swap! game* game/signal (util/get-current-ts))))
+            (handle-key-down [event]
+              (case (.-key event)
+                " " (handle-start-stop @started?*)
+                "Enter" (handle-player-signal)
+                ()))]
+      ; Listens to keydown
+      (uix.core/with-effect []
+                            (js/document.addEventListener "keydown" handle-key-down)
+                            #(js/document.removeEventListener "keydown" handle-key-down))
 
-        handle-key-down
-        (fn [event]
-          (case (.-key event)
-            " " (handle-start-stop @started?*)
-            "Enter" (handle-player-signal)
-            ()))]
-    ; Listens to keydown
-    (uix.core/with-effect []
-      (js/document.addEventListener "keydown" handle-key-down)
-      #(js/document.removeEventListener "keydown" handle-key-down))
-
-    ; UI
-    [:div.game-panel {:style {:position "relative"}}
-     [:> Badge {:variant "secondary"
-                :style {:position "absolute"
-                        :display "inline-block"
-                        :top "-1rem"
-                        :left "0.5rem"}}
-      (str n "-back")]
-     [:> Badge {:variant "light"
-                :pill true
-                :style {:position "absolute"
-                        :display "inline-block"
-                        :top "-1rem"
-                        :right "0.5rem"}}
-      (str "Trial #" (game/round-number @game*))]
-     ; The sliding card
-     [card (game/current-item @game*) (game/round-number @game*)]
+      ; UI
+      [:div.game-panel {:style {:position "relative"}}
+       [:> Badge {:variant "secondary"
+                  :style   {:position "absolute"
+                            :display  "inline-block"
+                            :top      "-1rem"
+                            :left     "0.5rem"}}
+        (str n "-back")]
+       [:> Badge {:variant "light"
+                  :pill    true
+                  :style   {:position "absolute"
+                            :display  "inline-block"
+                            :top      "-1rem"
+                            :right    "0.5rem"}}
+        (str "Trial #" (game/round-number @game*))]
+       ; The sliding card
+       [card (game/current-item @game*) (game/round-number @game*)]
 
 
-     ; Gives the player some instant feedback
-     [instant-result @started?* @last-result*]
+       ; Gives the player some instant feedback
+       [instant-result @started?* @last-result*]
 
-     ; Start/Stop
-     [start-stop-button @started?* (fn [started?]
-                                     (handle-start-stop started?))]
+       ; Start/Stop
+       [start-stop-button @started?* (fn [started?]
+                                       (handle-start-stop started?))]
 
-     ; Player signals the match
-     [:> Button {:on-click handle-player-signal
-                 :class-name "cmd-btn"
-                 :variant "success"
-                 :disabled (not (can-signal?))}
-      " Match "]
+       ; Player signals the match
+       [:> Button {:on-click   handle-player-signal
+                   :class-name "cmd-btn"
+                   :variant    "success"
+                   :disabled   (not (can-signal?))}
+        " Match "]
 
-     (let [show-stat? @show-stat?*
-           show-enough-trials? (and (not show-stat?)
-                                    (<= 10 (count (:history @game*)) 11))]
-       (uix.core/with-effect [show-enough-trials? show-stat?]
-         (if (or show-enough-trials? show-stat?)
-           (util/scroll-to-bottom)
-           (util/scroll-to-top))
-         nil)
+       (let [show-stat?          @show-stat?*
+             show-enough-trials? (and (not show-stat?)
+                                      (<= 10 (count (:history @game*)) 11))]
+         (uix.core/with-effect [show-enough-trials? show-stat?]
+                               (if (or show-enough-trials? show-stat?)
+                                 (util/scroll-to-bottom)
+                                 (util/scroll-to-top))
+                               nil)
 
-       (when show-enough-trials?
+         (when show-enough-trials?
+           [:div
+            [:hr]                                           ; ----------------
+
+            [:> Alert {:variant "success"}
+             "Results now available (feel free to keep playing)"]]))
+
+       (when @show-stat?*
          [:div
-          [:hr] ; ----------------
+          [:hr]                                             ; ----------------
 
-          [:> Alert {:variant "success"}
-           "Results now available (feel free to keep playing)"]]))
-
-     (when @show-stat?*
-       [:div
-        [:hr] ; ----------------
-
-        [:> Alert {:show @show-stat?*
-                   :variant "info"}
-         [:> Alert/Heading
-          "Results"]
-         [:ul {:style {:text-align "left"}}
-          [:li "Correct = "
-           (util/percentage (game/correct-rate @game*))]
-          [:li "Reaction time = "
-           (util/int-or-na (game/reaction-time @game*)) " ms (All) / "
-           (util/int-or-na (game/correct-reaction-time @game*)) " ms (Correct)\n"]
-          [:li "Combined time = "
-           (util/int-or-na (game/combined-time @game*)) " ms\n"]]
-         [:hr]
-         [:> Button {:on-click #(reset! show-stat?* false)
+          [:> Alert {:show    @show-stat?*
                      :variant "info"}
-          "Close"]]])]))
+           [:> Alert/Heading
+            "Results"]
+           [:ul {:style {:text-align "left"}}
+            [:li "Correct = "
+             (util/percentage (game/correct-rate @game*))]
+            [:li "Reaction time = "
+             (util/int-or-na (game/reaction-time @game*)) " ms (All) / "
+             (util/int-or-na (game/correct-reaction-time @game*)) " ms (Correct)\n"]
+            [:li "Combined time = "
+             (util/int-or-na (game/combined-time @game*)) " ms\n"]]
+           [:hr]
+           [:> Button {:on-click #(reset! show-stat?* false)
+                       :variant  "info"}
+            "Close"]]])])))
 
 (defn app []
-  (let [n*        (sticky-state "n-back/settings/n"        n           js/parseInt)
-        interval* (sticky-state "n-back/settings/interval" interval-ms js/parseInt)
+  (let [n*           (sticky-state "n-back/settings/n" n js/parseInt)
+        interval*    (sticky-state "n-back/settings/interval" interval-ms js/parseInt)
 
         ; WORKAROUND: Disables "Settings" and "Help" tabs when the game is running, as
         ; react-transition-group causes wrong sliding card opacity when switching tabs.
@@ -190,21 +186,21 @@
     [:<>
      [:div.main
       [:> Tabs {:default-active-key "play"
-                :style {:margin "0.5rem 0.5rem 1rem 0.5rem"}}
-       [:> Tab {:title "Play"
+                :style              {:margin "0.5rem 0.5rem 1rem 0.5rem"}}
+       [:> Tab {:title     "Play"
                 :event-key "play"}
         [game-panel @n* @interval* #(reset! is-running?* %)]]
-       [:> Tab {:title "Settings"
+       [:> Tab {:title     "Settings"
                 :event-key "settings"
-                :disabled @is-running?*}
+                :disabled  @is-running?*}
         [:div
-         [settings-comp {:n @n*
-                         :on-change-n #(reset! n* %)
-                         :interval @interval*
+         [settings-comp {:n                  @n*
+                         :on-change-n        #(reset! n* %)
+                         :interval           @interval*
                          :on-change-interval #(reset! interval* %)}]]]
-       [:> Tab {:title "Help"
+       [:> Tab {:title     "Help"
                 :event-key "help"
-                :disabled @is-running?*}
+                :disabled  @is-running?*}
         [help-comp]]]]]))
 
 (uix.dom/render [app] (.getElementById js/document "root"))

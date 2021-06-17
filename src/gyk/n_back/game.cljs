@@ -29,16 +29,16 @@
   (some? (:signal-ts round)))
 
 (defn- round-result [^Round round]
-  (let [is-matched? (:is-matched? round)
+  (let [is-matched?      (:is-matched? round)
         player-signaled? (has-player-signaled? round)
-        delta-ts (when player-signaled?
-                   (- (:signal-ts round) (:spawn-ts round)))]
+        delta-ts         (when player-signaled?
+                           (- (:signal-ts round) (:spawn-ts round)))]
     (case [is-matched? player-signaled?]
       [true true]
       [true delta-ts]
 
       [false true]
-      [false delta-ts] ; records the reaction time anyway
+      [false delta-ts]                                      ; records the reaction time anyway
 
       [true false]
       [false nil]
@@ -47,10 +47,10 @@
       nil)))
 
 (defrecord EmoticonGame
-  [n ; The N in N-back
-   i ; The round number
-   match-prob ; The probability of a match occurring
-   queue ; The ring buffer of size n to store the recent items
+  [n                                                        ; The N in N-back
+   i                                                        ; The round number
+   match-prob                                               ; The probability of a match occurring
+   queue                                                    ; The ring buffer of size n to store the recent items
    current-round
    last-result
    history])
@@ -69,39 +69,39 @@
     (-> this :current-round :value))
 
   (step [this ts]
-    (let [current-round (:current-round this)
-          current-item (:value current-round)
+    (let [current-round    (:current-round this)
+          current-item     (:value current-round)
           player-signaled? (has-player-signaled? current-round)
-          result' (when current-round
-                    (if player-signaled?
-                      (:last-result this) ; Has been computed, skipped.
-                      (round-result current-round)))
-          history' (if player-signaled?
-                     (:history this) ; Has been appended to history
-                     (append-history (:history this) result'))
+          result'          (when current-round
+                             (if player-signaled?
+                               (:last-result this)          ; Has been computed, skipped.
+                               (round-result current-round)))
+          history'         (if player-signaled?
+                             (:history this)                ; Has been appended to history
+                             (append-history (:history this) result'))
 
-          queue' (if current-item
-                   (conj (:queue this) current-item)
-                   (:queue this))
-          can-match? (= (count queue') (:n this))
-          should-match? (-> (and can-match?
-                                 (< (rand) (:match-prob this)))
-                            boolean)
-          head (first queue')
-          new-item (if should-match?
-                     head
-                     (->> (repeatedly #(rand-nth emoticons))
-                          (filter #(not= % head))
-                          (first)))
-          new-round (Round. new-item ts should-match? nil)]
+          queue'           (if current-item
+                             (conj (:queue this) current-item)
+                             (:queue this))
+          can-match?       (= (count queue') (:n this))
+          should-match?    (-> (and can-match?
+                                    (< (rand) (:match-prob this)))
+                               boolean)
+          head             (first queue')
+          new-item         (if should-match?
+                             head
+                             (->> (repeatedly #(rand-nth emoticons))
+                                  (filter #(not= % head))
+                                  (first)))
+          new-round        (Round. new-item ts should-match? nil)]
       (when goog.DEBUG
         (println new-round))
       (assoc this
-             :i (inc (:i this))
-             :queue queue'
-             :current-round new-round
-             :last-result result'
-             :history history')))
+        :i (inc (:i this))
+        :queue queue'
+        :current-round new-round
+        :last-result result'
+        :history history')))
 
   (signal [this ts]
     (let [current-round (:current-round this)]
@@ -109,11 +109,11 @@
                ; Do not update ts if the player signals multiple times.
                (not (has-player-signaled? current-round)))
         (let [current-round' (assoc current-round :signal-ts ts)
-              result (round-result current-round')]
+              result         (round-result current-round')]
           (assoc this
-                 :current-round current-round'
-                 :last-result result
-                 :history (append-history (:history this) result)))
+            :current-round current-round'
+            :last-result result
+            :history (append-history (:history this) result)))
         this)))
 
   (round-number [this]
@@ -129,16 +129,16 @@
     (:last-result this)))
 
 (defn emoticon-game [n match-prob ts]
-  {:pre [(pos-int? n) ; WTH `(pos? "2")` is true in CLJS
+  {:pre [(pos-int? n)                                       ; WTH `(pos? "2")` is true in CLJS
          (< 0.0 match-prob 1.0)
          (or (nil? ts) (>= ts 0))]}
-  (let [q (ring-buffer n)
+  (let [q    (ring-buffer n)
         game (map->EmoticonGame
-              {:n n
-               :i 0
-               :match-prob match-prob
-               :queue q
-               :history []})]
+               {:n          n
+                :i          0
+                :match-prob match-prob
+                :queue      q
+                :history    []})]
     (step game ts)))
 
 ;; Time
@@ -150,8 +150,8 @@
                            :history
                            (keep second))]
     (when-not (empty? react-history)
-     (let [total (apply + react-history)]
-       (/ total (count react-history))))))
+      (let [total (apply + react-history)]
+        (/ total (count react-history))))))
 
 (defn correct-reaction-time
   [this]
@@ -171,6 +171,6 @@
 (defn combined-time
   [this]
   (let [crt (correct-reaction-time this)
-        r (correct-rate this)]
+        r   (correct-rate this)]
     (when (and crt r)
       (/ crt r))))

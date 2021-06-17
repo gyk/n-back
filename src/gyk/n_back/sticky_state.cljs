@@ -11,8 +11,8 @@
   (.getItem (.-localStorage js/window) key))
 
 #_(defn- remove-item!
-  [key]
-  (.removeItem (.-localStorage js/window) key))
+    [key]
+    (.removeItem (.-localStorage js/window) key))
 
 ;; Sticky state
 ; https://www.joshwcomeau.com/react/persisting-react-state-in-localstorage/

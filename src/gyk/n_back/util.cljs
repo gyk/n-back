@@ -22,5 +22,5 @@
 
 (defn scroll-to-bottom []
   (js/window.scrollTo
-   js/document.body.scrollLeft
-   js/document.body.scrollHeight))
+    js/document.body.scrollLeft
+    js/document.body.scrollHeight))
