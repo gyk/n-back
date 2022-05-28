@@ -45,11 +45,13 @@
       :else "🙀")]])
 
 (defn start-stop-button [started? on-change]
-  [:> Button {:on-click   (fn []
-                            (when on-change
-                              (on-change started?)))
-              :class-name "cmd-btn"
-              :variant    "warning"}
+  [:> Button {:on-click     (fn []
+                              (when on-change
+                                (on-change started?)))
+              :on-mouseDown (fn [e]
+                              (.preventDefault e))
+              :class-name   "cmd-btn"
+              :variant      "warning"}
    (if started?
      " Stop "
      " Start ")])
