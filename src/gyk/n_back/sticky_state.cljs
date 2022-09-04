@@ -1,5 +1,6 @@
 (ns gyk.n-back.sticky-state
-  (:require [uix.core.alpha :as uix.core]))
+  (:require [helix.hooks]
+            [gyk.n-back.hooks :refer [use-state]]))
 
 ;; localStorage
 (defn- set-item!
@@ -18,10 +19,10 @@
 ; https://www.joshwcomeau.com/react/persisting-react-state-in-localstorage/
 
 (defn sticky-state [key default-value convert]
-  (let [value* (uix.core/state #(if-some [value-str (get-item key)]
-                                  (convert value-str)
-                                  default-value))]
-    (uix.core/with-effect [key @value*]
+  (let [value* (use-state (if-some [value-str (get-item key)]
+                            (convert value-str)
+                            default-value))]
+    (helix.hooks/use-effect [key @value*]
       (set-item! key @value*)
       nil)
     value*))
