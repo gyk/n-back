@@ -20,7 +20,7 @@
   ["🍰" "🖊️" "🎾" "💓" "🐟" "🥄" "🚗" "🐱" "📚" "🥾"])
 
 (defrecord Round
-  [^String value
+  [^string value
    ^number spawn-ts
    ^boolean is-matched?
    ^number signal-ts])
