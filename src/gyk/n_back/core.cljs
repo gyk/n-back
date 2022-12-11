@@ -1,6 +1,7 @@
 (ns gyk.n-back.core
-  (:require [helix.core :refer [$ <> defnc]]
+  (:require [helix.core :refer [$ <>]]
             [helix.dom :as d]
+            [helix.hooks]
             ["react-dom" :as rdom]
             ["react-transition-group" :refer [SwitchTransition CSSTransition]]
             ["react-bootstrap/Button" :as Button]
@@ -8,11 +9,13 @@
             ["react-bootstrap/Tabs" :as Tabs]
             ["react-bootstrap/Tab" :as Tab]
             ["react-bootstrap/Badge" :as Badge]
+            [re-frame.core :as rf]
+            [gyk.n-back.db :as db]
             [gyk.n-back.game :as game]
             [gyk.n-back.settings :refer [settings-comp]]
+            [gyk.n-back.store :as store]
             [gyk.n-back.help :refer [help-comp]]
-            [gyk.n-back.hooks :refer [use-state]]
-            [gyk.n-back.sticky-state :refer [sticky-state]]
+            [gyk.n-back.hooks :refer [<-sub]]
             [gyk.n-back.util :as util]))
 
 (defn init []
@@ -60,51 +63,25 @@
        " Stop "
        " Start ")))
 
-(defn- game-n [n] (game/emoticon-game n match-probability nil))
-(defn- game-n-now [n] (game/emoticon-game n match-probability (util/get-current-ts)))
 
-(def ^:private interval-id* (atom nil))
+(rf/dispatch-sync [:initialize])
 
-(defn game-panel [n interval on-change]
-  (let [game*       (use-state #(game-n n))
-        started?*   (use-state false)
-        show-stat?* (use-state false)
-
-        can-signal? #(and (game/can-match? @game*)
-                          @started?*)]
+(defn game-panel
+  []
+  (let [game         (<-sub [:game])
+        n            (<-sub [:n])
+        started?     (<-sub [:started?])
+        show-stat?   (<-sub [:show-stat?])
+        round-number (<-sub [:round-number])
+        can-signal?  (<-sub [:can-signal?])]
     ; Event handlers
-    (letfn [(handle-start-stop [started?]
-              (let [started?' (not started?)]
-                (if started?'
-                  (do
-                    (reset! game* (if (nil? (game/last-timestamp @game*))
-                                    ; First time
-                                    (game/with-timestamp @game* (util/get-current-ts))
-                                    ; Restart
-                                    (game-n-now n)))
-                    (reset!
-                      interval-id*
-                      (js/setInterval
-                        (fn []
-                          (swap! game* game/step (util/get-current-ts)))
-                        interval))
-                    (reset! show-stat?* false))
-                  (do
-                    (js/clearInterval (-> (reset-vals! interval-id* nil)
-                                          (first)))
-                    (reset! show-stat?* true)))
-                (reset! started?* started?')
-                (when on-change
-                  (on-change started?'))))
-
-            (handle-player-signal []
-              (when (can-signal?)
-                (swap! game* game/signal (util/get-current-ts))))
+    (letfn [(handle-start-stop []
+              (rf/dispatch [:toggle-start-stop]))
 
             (handle-key-down [event]
               (case (.-key event)
-                " " (handle-start-stop @started?*)
-                "Enter" (handle-player-signal)
+                " " (handle-start-stop)
+                "Enter" (rf/dispatch [:player-signal])
                 ()))]
       ; Listens to keydown
       (helix.hooks/use-effect []
@@ -126,28 +103,25 @@
                                  :display  "inline-block"
                                  :top      "-1rem"
                                  :right    "0.5rem"}}
-                (str "Trial #" (game/round-number @game*)))
+                (str "Trial #" round-number))
              ; The sliding card
-             (card (game/current-item @game*) (game/round-number @game*))
-
+             (card (game/current-item game) (game/round-number game))
 
              ; Gives the player some instant feedback
-             (instant-result @started?* (:last-result @game*))
+             (instant-result started? (:last-result game))
 
              ; Start/Stop
-             (start-stop-button @started?* (fn [started?]
-                                             (handle-start-stop started?)))
+             (start-stop-button started? handle-start-stop)
 
              ; Player signals the match
-             ($ Button {:onClick   handle-player-signal
+             ($ Button {:onClick   #(rf/dispatch [:player-signal])
                         :className "cmd-btn"
                         :variant   "success"
-                        :disabled  (not (can-signal?))}
+                        :disabled  (not can-signal?)}
                 " Match ")
 
-             (let [show-stat?          @show-stat?*
-                   show-enough-trials? (and (not show-stat?)
-                                            (<= 10 (count (:history @game*)) 11))]
+             (let [show-enough-trials? (and (not show-stat?)
+                                            (<= 10 (count (:history game)) 11))]
                (helix.hooks/use-effect [show-enough-trials? show-stat?]
                  (if (or show-enough-trials? show-stat?)
                    (util/scroll-to-bottom)
@@ -162,36 +136,33 @@
                    ($ Alert {:variant "success"}
                       "Results now available (feel free to keep playing)"))))
 
-             (when @show-stat?*
+             (when show-stat?
                (d/div
                  (d/hr)
                  ; ----------------
 
-                 ($ Alert {:show    @show-stat?*
+                 ($ Alert {:show    show-stat?
                            :variant "info"}
                     ($ Alert/Heading
                        "Results")
                     (d/ul
                       {:style {:text-align "left"}}
                       (d/li "Correct = "
-                            (util/percentage (game/correct-rate @game*)))
+                        (util/percentage (game/correct-rate game)))
                       (d/li "Reaction time = "
-                            (util/int-or-na (game/reaction-time @game*)) " ms (All) / "
-                            (util/int-or-na (game/correct-reaction-time @game*)) " ms (Correct)\n")
+                        (util/int-or-na (game/reaction-time game)) " ms (All) / "
+                        (util/int-or-na (game/correct-reaction-time game)) " ms (Correct)\n")
                       (d/li "Combined time = "
-                            (util/int-or-na (game/combined-time @game*)) " ms\n"))
+                        (util/int-or-na (game/combined-time game)) " ms\n"))
                     (d/hr)
-                    ($ Button {:onClick #(reset! show-stat?* false)
+                    ($ Button {:onClick #(rf/dispatch [:hide-stat])
                                :variant "info"}
                        "Close"))))))))
 
 (defn app []
-  (let [n*           (sticky-state "n-back/settings/n" n js/parseInt)
-        interval*    (sticky-state "n-back/settings/interval" interval-ms js/parseInt)
-
-        ; WORKAROUND: Disables "Settings" and "Help" tabs when the game is running, as
-        ; react-transition-group causes wrong sliding card opacity when switching tabs.
-        is-running?* (use-state false)]
+  ; WORKAROUND: Disables "Settings" and "Help" tabs when the game is running, as
+  ; react-transition-group causes wrong sliding card opacity when switching tabs.
+  (let [is-running? (<-sub [:started?])]
     (<>
       (d/div
         {:class "main"}
@@ -199,18 +170,16 @@
                  :style            {:margin "0.5rem 0.5rem 1rem 0.5rem"}}
            ($ Tab {:title    "Play"
                    :eventKey "play"}
-              (game-panel @n* @interval* #(reset! is-running?* %)))
+              (game-panel))
            ($ Tab {:title    "Settings"
                    :eventKey "settings"
-                   :disabled @is-running?*}
+                   :disabled is-running?}
               (d/div
-                ($ settings-comp {:n                  @n*
-                                  :on-change-n        #(reset! n* %)
-                                  :interval           @interval*
-                                  :on-change-interval #(reset! interval* %)})))
+                ($ settings-comp {:on-change-n        #(rf/dispatch [:set-local-store :n (str %)])
+                                  :on-change-interval #(rf/dispatch [:set-local-store :interval (str %)])})))
            ($ Tab {:title    "Help"
                    :eventKey "help"
-                   :disabled @is-running?*}
+                   :disabled is-running?}
               ($ help-comp)))))))
 
 (rdom/render ($ app) (.getElementById js/document "root"))
