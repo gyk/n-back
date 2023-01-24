@@ -12,7 +12,7 @@ html, body, #root {
 
 body {
   padding: 1rem;
-  font-family: 'American Typewriter', 'Bookman Old Style', sans-serif;
+  font-family: Sylfaen, 'Bookman Old Style', sans-serif;
   background-color: #F7F7F7;
 }
 
@@ -34,6 +34,10 @@ body {
   border: transparent gray;
   border-radius: 0.25rem;
   text-align: center;
+}
+
+.game-panel .badge {
+  font-family: Tahoma;
 }
 
 .label {
