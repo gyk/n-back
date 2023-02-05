@@ -11,6 +11,18 @@
   {:n        2
    :interval 2500})
 
+(defn load-stored-settings
+  [local-store]
+  (let [{:keys [n interval]} local-store]
+    {:n        (when n (js/parseInt n))
+     :interval (when interval (js/parseInt interval))}))
+
+(defn merge-settings-with
+  [new-settings]
+  (into default-settings
+        (remove (comp nil? val))
+        new-settings))
+
 (defn- game-n [n] (game/emoticon-game n match-probability nil))
 (defn- game-n-now [n now-ts] (game/emoticon-game n match-probability now-ts))
 
@@ -82,10 +94,8 @@
   [(rf/inject-cofx :get-local-store :n)
    (rf/inject-cofx :get-local-store :interval)]
   (fn [cofx _]
-    (let [{:keys [n interval]} (:local-store cofx)
-          settings (cond-> default-settings
-                           n (assoc :n (js/parseInt n))
-                           interval (assoc :interval (js/parseInt interval)))]
+    (let [stored-settings (load-stored-settings (:local-store cofx))
+          settings        (merge-settings-with stored-settings)]
       {:db (default-db settings)})))
 
 (rf/reg-event-fx
@@ -94,19 +104,22 @@
    (rf/inject-cofx :get-local-store :n)
    (rf/inject-cofx :get-local-store :interval)]
   (fn [{:keys [db now local-store]}]
-    (let [n           (js/parseInt (:n local-store))
-          interval-ms (js/parseInt (:interval local-store))]
+    (let [stored-settings (load-stored-settings local-store)
+          settings        (merge-settings-with stored-settings)
+          {:keys [n interval]} settings]
       {:db (-> db
-             (assoc :started? true
-                    :show-stat? false)
-             (update :game
-                     (fn [game]
-                       (if (nil? (game/last-timestamp game))
-                         ; First time
-                         (game/with-timestamp game now)
-                         ; Restart
-                         (game-n-now n now)))))
-       :fx [[:dispatch [:start-timer interval-ms]]]})))
+               (assoc :started? true
+                      :show-stat? false)
+               (update :game
+                       (fn [game]
+                         (let [reuse-current? (and (nil? (game/last-timestamp game))
+                                                   (= (game/get-n game) n))]
+                           (if reuse-current?
+                             ; First time
+                             (game/with-timestamp game now)
+                             ; Restart
+                             (game-n-now n now))))))
+       :fx [[:dispatch [:start-timer interval]]]})))
 
 (rf/reg-event-fx
   :stop-game

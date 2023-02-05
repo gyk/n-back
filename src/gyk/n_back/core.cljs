@@ -21,11 +21,6 @@
 (defn init []
   (set! (.-title js/document) "N-Back"))
 
-;; Default settings
-(def n 2)
-(def interval-ms 2500)
-(def match-probability 0.333)
-
 (defn card [card-value i]
   (d/div
     ($ SwitchTransition {:mode "out-in"}
